@@ -27,10 +27,13 @@
   .brand .dot{color:var(--gold);}
   .today-right{display:flex;align-items:center;gap:8px;}
   .today-label{font-family:var(--mono);font-size:11px;color:var(--muted);}
-  .syncdot{width:6px;height:6px;border-radius:50%;background:var(--faint);transition:background .3s;flex-shrink:0;}
-  .syncdot.ok{background:var(--good);}
-  .syncdot.sync{background:var(--gold);}
-  .syncdot.off{background:var(--over);}
+  .syncpill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;transition:background .3s,color .3s,border-color .3s;white-space:nowrap;border:1px solid transparent;color:var(--faint);background:rgba(182,180,168,.14);}
+  .syncdot{width:9px;height:9px;border-radius:50%;background:currentColor;flex-shrink:0;}
+  .syncpill.ok{color:#2E8B57;background:rgba(46,139,87,.13);border-color:rgba(46,139,87,.34);}
+  .syncpill.sync{color:#B7892A;background:rgba(183,137,42,.15);border-color:rgba(183,137,42,.36);}
+  .syncpill.off{color:#B05B41;background:rgba(176,91,65,.13);border-color:rgba(176,91,65,.36);}
+  .syncpill.sync .syncdot{animation:syncpulse 1s ease-in-out infinite;}
+  @keyframes syncpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.72);}}
   .page{display:none;animation:fade .4s ease;}
   .page.on{display:block;}
   @keyframes fade{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
@@ -196,7 +199,7 @@
 <div class="app">
   <div class="top">
     <div class="brand">Quit Ledger<span class="dot">.</span></div>
-    <div class="today-right"><span class="today-label" id="todayLabel"></span><span class="syncdot" id="syncDot" title="Sync"></span></div>
+    <div class="today-right"><span class="today-label" id="todayLabel"></span><span class="syncpill" id="syncDot" title="Sync"><span class="syncdot"></span><span id="syncTxt">SYNC</span></span></div>
   </div>
 
   <div class="page on" id="page-today">
@@ -380,7 +383,7 @@
   const SB_HEAD={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
   let cloudTs=0, pendingPush=false, pushT=null, syncReady=false;
 
-  function setSync(st){const el=document.getElementById('syncDot');if(!el)return;el.className='syncdot'+(st?' '+st:'');el.title=st==='ok'?'Synced':st==='sync'?'Syncing...':'Offline - will retry';}
+  function setSync(st){const el=document.getElementById('syncDot');if(!el)return;el.className='syncpill'+(st?' '+st:'');const t=document.getElementById('syncTxt');if(t)t.textContent=st==='ok'?'Synced':st==='sync'?'Syncing':st==='off'?'Offline':'Sync';el.title=st==='ok'?'Synced':st==='sync'?'Syncing...':st==='off'?'Offline - will retry':'Sync';}
   function normalize(r){
     if(!r||!r.settings||!r.records)return {settings:{quota:10,price:10,start:'2026-08-05'},records:{},lastCeleb:0,seeded:null,_ts:0};
     r.settings.start=r.settings.start||'2026-08-05';
