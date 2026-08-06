@@ -25,7 +25,12 @@
   .top{padding:calc(env(safe-area-inset-top) + 26px) 2px 6px;display:flex;align-items:baseline;justify-content:space-between;}
   .brand{font-family:var(--serif);font-weight:500;font-size:20px;}
   .brand .dot{color:var(--gold);}
+  .today-right{display:flex;align-items:center;gap:8px;}
   .today-label{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .syncdot{width:6px;height:6px;border-radius:50%;background:var(--faint);transition:background .3s;flex-shrink:0;}
+  .syncdot.ok{background:var(--good);}
+  .syncdot.sync{background:var(--gold);}
+  .syncdot.off{background:var(--over);}
   .page{display:none;animation:fade .4s ease;}
   .page.on{display:block;}
   @keyframes fade{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
@@ -191,7 +196,7 @@
 <div class="app">
   <div class="top">
     <div class="brand">Quit Ledger<span class="dot">.</span></div>
-    <div class="today-label" id="todayLabel"></div>
+    <div class="today-right"><span class="today-label" id="todayLabel"></span><span class="syncdot" id="syncDot" title="Sync"></span></div>
   </div>
 
   <div class="page on" id="page-today">
@@ -365,7 +370,55 @@
     try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.settings&&r.records){r.settings.start=r.settings.start||'2026-08-05';if(!r._migStart){if(r.settings.start<'2026-08-05')r.settings.start='2026-08-05';r._migStart=true;localStorage.setItem(KEY,JSON.stringify(r));}if(r.lastCeleb==null)r.lastCeleb=0;return r;}}catch(e){}
     return {settings:{quota:10,price:10,start:'2026-08-05'}, records:{}, lastCeleb:0, seeded:null};
   }
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){toast('Storage blocked — data won\u2019t be saved');}}
+  function persistLocal(){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){toast('Storage blocked — data won’t be saved');}}
+  function save(){persistLocal();if(syncReady)cloudPush();}
+
+  // ---------- cloud sync (Supabase shared ledger, last-write-wins) ----------
+  const SB_URL='https://vkctifsaunpatmwxyuuk.supabase.co';
+  const SB_KEY='sb_publishable_1fbR-qXf5vXdKeBwfYGEhA_8Irwg4cv';
+  const SB_ROW=SB_URL+'/rest/v1/ledger?id=eq.shared';
+  const SB_HEAD={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  let cloudTs=0, pendingPush=false, pushT=null, syncReady=false;
+
+  function setSync(st){const el=document.getElementById('syncDot');if(!el)return;el.className='syncdot'+(st?' '+st:'');el.title=st==='ok'?'Synced':st==='sync'?'Syncing...':'Offline - will retry';}
+  function normalize(r){
+    if(!r||!r.settings||!r.records)return {settings:{quota:10,price:10,start:'2026-08-05'},records:{},lastCeleb:0,seeded:null,_ts:0};
+    r.settings.start=r.settings.start||'2026-08-05';
+    if(r.lastCeleb==null)r.lastCeleb=0;
+    if(r._ts==null)r._ts=0;
+    return r;
+  }
+  async function pushNow(){
+    const ts=Date.now();db._ts=ts;persistLocal();
+    try{const r=await fetch(SB_ROW,{method:'PATCH',headers:SB_HEAD,body:JSON.stringify({data:db,updated_at:new Date(ts).toISOString()})});
+      if(r.ok){cloudTs=ts;pendingPush=false;setSync('ok');return true;}}catch(e){}
+    setSync('off');return false;
+  }
+  function cloudPush(){pendingPush=true;setSync('sync');clearTimeout(pushT);pushT=setTimeout(pushNow,600);}
+  async function cloudPull(){
+    if(pendingPush)return;
+    try{const r=await fetch(SB_ROW+'&select=data,updated_at',{headers:SB_HEAD,cache:'no-store'});
+      if(!r.ok){setSync('off');return;}
+      const rows=await r.json();setSync('ok');
+      if(!rows.length)return;const row=rows[0];const ts=Date.parse(row.updated_at)||0;
+      if(ts>cloudTs&&row.data&&row.data.records){cloudTs=ts;db=normalize(row.data);persistLocal();renderAll();maybeCelebrate();}
+    }catch(e){setSync('off');}
+  }
+  async function cloudInit(){
+    let adopted=false;
+    try{const r=await fetch(SB_ROW+'&select=data,updated_at',{headers:SB_HEAD,cache:'no-store'});
+      if(r.ok){const rows=await r.json();setSync('ok');const row=rows[0];
+        const cTs=row?(Date.parse(row.updated_at)||0):0;const cloudHas=row&&row.data&&row.data.records;
+        const localTs=db._ts||0;
+        if(cloudHas&&cTs>=localTs){cloudTs=cTs;db=normalize(row.data);persistLocal();adopted=true;}
+      }else setSync('off');
+    }catch(e){setSync('off');}
+    const seeded=ensureTodaySeed();
+    renderAll();maybeCelebrate();
+    if(!adopted||seeded)await pushNow();
+    syncReady=true;
+    setInterval(()=>{if(document.hidden)return;if(pendingPush)cloudPush();else cloudPull();},4000);
+  }
 
   function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
   function todayStr(){return ymd(new Date());}
@@ -380,9 +433,12 @@
   function ensureTodaySeed(){
     const t=todayStr();
     if(db.seeded!==t){
-      if(!db.records[t]) db.records[t]={count:db.settings.quota,quota:db.settings.quota,price:db.settings.price};
+      let changed=false;
+      if(!db.records[t]){db.records[t]={count:db.settings.quota,quota:db.settings.quota,price:db.settings.price};changed=true;}
       db.seeded=t; save();
+      return changed;
     }
+    return false;
   }
 
   // ---- streak of consecutive days (ending today) at or under budget ----
@@ -680,12 +736,11 @@
     if(document.getElementById('page-bill').classList.contains('on'))renderBill();
   }
   let lastDay=todayStr();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(todayStr()!==lastDay)lastDay=todayStr();ensureTodaySeed();renderAll();maybeCelebrate();}});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(todayStr()!==lastDay)lastDay=todayStr();const s=ensureTodaySeed();renderAll();maybeCelebrate();if(s&&syncReady)cloudPush();cloudPull();}});
   window.addEventListener('resize',()=>{if(document.getElementById('page-trend').classList.contains('on'))renderTrend();});
 
-  ensureTodaySeed();
   renderToday();
-  maybeCelebrate();
+  cloudInit();
 })();
 </script>
 </body>
