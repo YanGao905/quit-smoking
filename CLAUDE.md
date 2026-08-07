@@ -20,6 +20,22 @@
 - 每条记录快照存 `count / quota / price`
 - 欠款 = `max(0, count - quota) * price`（前 quota 根免费，之后每根 price 元）
 
+## 功能行为（易忘的产品细节）
+
+- **补登**：在 Ledger 页 `+ Log another day` 按钮（`btnBackfill` → `openSheet(null,{})`），可选日期补录历史。
+- **Trends 曲线数字标注**（`drawCig()`）：每天抽烟数量标在点上，超标用 `--over`(红)、达标用 `--ink`(黑)。
+  只在点数少时显示（`if(data.length<=7)`），即 7 天视图；30 天/All 保持曲线清爽、不标数字。
+- **庆祝弹窗**（`maybeCelebrate()`）：连续达标满 **7 天**才弹（里程碑 `Math.floor(streak/7)*7`，阈值 `>=7`）。
+  断了 streak 后 `lastCeleb` 回落，重新连满 7 天会再弹。改这个阈值只需改 `/7` 和 `>=7` 两处。
+  注意：Today 卡片上那个小 `streak-badge` 是另一个元素，≥2 天就显示，与弹窗无关。
+
+## 本地测试技巧（不污染线上账本）
+
+线上是双方共用的真实账本，**严禁写测试数据**。要看多天数据/触发弹窗等效果时，
+复制 `index.html` 到临时文件，做两处改造后本地 `python3 -m http.server` 预览：
+1. 把启动处 `cloudInit();` 换成 `renderAll();maybeCelebrate();`（跳过联网）
+2. 在 `let db=load();` 后注入构造好的 `db.records`（含目标日期/连续天数），并 stub `cloudPush` 为 no-op
+
 ## 部署（重要：当前很慢，有更快方案）
 
 当前用的是 **GitHub Pages 老 Jekyll 构建**，每次改动要 5~10 分钟，还偶发报错。
