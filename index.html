@@ -702,8 +702,8 @@
   const reduceMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
   function maybeCelebrate(){
     const streak=goodStreak();
-    const milestone=Math.floor(streak/5)*5;
-    if(milestone>=5 && milestone>db.lastCeleb){db.lastCeleb=milestone;save();showCelebration(streak);}
+    const milestone=Math.floor(streak/7)*7;
+    if(milestone>=7 && milestone>db.lastCeleb){db.lastCeleb=milestone;save();showCelebration(streak);}
     else if(streak<db.lastCeleb){db.lastCeleb=milestone;save();}
   }
   function showCelebration(streak){
