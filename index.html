@@ -577,6 +577,12 @@
     ctx.strokeStyle=css('--ink');ctx.lineWidth=2.4;ctx.lineJoin='round';ctx.beginPath();st=false;
     data.forEach((d,i)=>{if(d.count==null)return;const x=X(i),y=Y(d.count);if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y);});ctx.stroke();
     data.forEach((d,i)=>{if(d.count==null)return;const x=X(i),y=Y(d.count);ctx.fillStyle=d.count>quota?css('--over'):css('--ink');ctx.beginPath();ctx.arc(x,y,3,0,7);ctx.fill();ctx.fillStyle=css('--surface');ctx.beginPath();ctx.arc(x,y,1.3,0,7);ctx.fill();});
+    // per-day count labels (thinned so dense ranges don't overlap)
+    const step=data.length<=1?999:(w-padL-padR)/(data.length-1);
+    let every=1;if(step<26)every=2;if(step<17)every=3;if(step<12)every=4;
+    const last=data.length-1;
+    ctx.textAlign='center';ctx.font='700 9px "Space Mono",monospace';ctx.textBaseline='alphabetic';
+    data.forEach((d,i)=>{if(d.count==null)return;if(i%every!==0&&i!==last)return;const x=X(i),y=Y(d.count);ctx.fillStyle=d.count>quota?css('--over'):css('--ink');const above=(y-8)>(padT+2);ctx.fillText(d.count,x,above?y-8:y+14);});
     ctx.fillStyle=css('--faint');ctx.textAlign='center';ctx.font='9px "Space Mono",monospace';
     const idxs=data.length<=1?[0]:[0,Math.floor((data.length-1)/2),data.length-1];
     [...new Set(idxs)].forEach(i=>ctx.fillText(fmtShort(data[i].date),X(i),h-6));
