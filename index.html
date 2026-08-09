@@ -227,12 +227,12 @@
     <div class="split">
       <div class="cell">
         <div class="k">Owed today</div>
-        <div class="v zero" id="todayDue">¥0</div>
+        <div class="v zero" id="todayDue">$0</div>
         <div class="sub" id="todayDueSub">within budget, free</div>
       </div>
       <div class="cell">
         <div class="k">Total owed</div>
-        <div class="v neutral" id="totalDueMini">¥0</div>
+        <div class="v neutral" id="totalDueMini">$0</div>
         <div class="sub">owed to you</div>
       </div>
     </div>
@@ -270,7 +270,7 @@
   <div class="page" id="page-bill">
     <div class="total-card">
       <div class="k">Total owed</div>
-      <div class="v"><small>¥</small><span id="totalBig">0</span></div>
+      <div class="v"><small>$</small><span id="totalBig">0</span></div>
       <div class="meta">
         <div><b id="daysCount">0</b> logged</div>
         <div><b id="overDays">0</b> over</div>
@@ -366,7 +366,7 @@
   const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const DOWF=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const CUR='¥';
+  const CUR='$';
 
   let db=load();
   function load(){

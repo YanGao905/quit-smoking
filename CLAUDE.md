@@ -18,7 +18,8 @@
 ## 金额规则
 
 - 每条记录快照存 `count / quota / price`
-- 欠款 = `max(0, count - quota) * price`（前 quota 根免费，之后每根 price 元）
+- 欠款 = `max(0, count - quota) * price`（前 quota 根免费，之后每根 price）
+- 货币符号：JS 常量 `const CUR='$';`（当前美元 USD）。改币种改这一处即可；HTML 里另有 3 处硬编码符号（`todayDue` / `totalDueMini` / `totalBig` 的 `<small>`）需同步改。
 
 ## 功能行为（易忘的产品细节）
 
