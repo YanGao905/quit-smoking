@@ -39,7 +39,7 @@
   @keyframes fade{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
   @media (prefers-reduced-motion:reduce){.page{animation:none;}}
 
-  .hero{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:30px 26px 26px;margin-top:20px;}
+  .hero{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 26px 24px;margin-top:20px;}
   .hero-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);}
   .count-row{display:flex;align-items:baseline;gap:10px;margin:10px 0 2px;}
   .count{font-family:var(--serif);font-weight:300;font-size:96px;line-height:.86;letter-spacing:-.04em;font-variant-numeric:tabular-nums;transition:color .5s ease;cursor:pointer;position:relative;}
@@ -53,8 +53,9 @@
   .streak-badge{display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:5px 11px;border-radius:20px;background:var(--sunk);font-size:11px;font-weight:600;color:var(--good);}
   .streak-badge svg{width:12px;height:12px;}
   .streak-badge.hide{display:none;}
+  .logdate{font-family:var(--serif);font-weight:500;font-size:19px;margin-top:4px;}
 
-  .meter{display:flex;flex-wrap:wrap;gap:6px;margin:22px 0 0;}
+  .meter{display:flex;flex-wrap:wrap;gap:6px;margin:24px 0 0;}
   .stick{width:6px;height:42px;border-radius:2px;position:relative;transition:all .25s ease;}
   .stick.empty{background:transparent;border:1px solid var(--line);}
   .stick.filled{background:var(--ink);}
@@ -63,7 +64,7 @@
   .stick.over::after{content:'';position:absolute;bottom:0;left:0;right:0;height:8px;border-radius:0 0 2px 2px;background:#7f3a28;}
   .meter-note{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:12px;}
 
-  .controls{display:flex;align-items:stretch;gap:10px;margin-top:24px;}
+  .controls{display:flex;align-items:stretch;gap:10px;margin-top:18px;}
   .step{border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .14s ease;touch-action:manipulation;user-select:none;}
   .step:active{transform:scale(.95);background:var(--sunk);}
   .step.minus{width:52px;font-size:26px;font-weight:400;}
@@ -87,7 +88,7 @@
   .sec-title{font-family:var(--serif);font-weight:400;font-size:19px;margin:34px 2px 16px;}
   .sec-title.tight{margin-top:26px;}
 
-  .range{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:13px;margin-bottom:18px;}
+  .range{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:13px;margin:30px 0 14px;}
   .range button{flex:1;padding:9px 0;border-radius:9px;font-size:12.5px;font-weight:500;color:var(--muted);transition:all .2s;}
   .range button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:var(--shadow);}
 
@@ -123,6 +124,7 @@
   .rows{margin-top:6px;}
   .row{display:flex;align-items:center;gap:14px;padding:16px 2px;border-bottom:1px solid var(--hair);}
   .row:last-child{border-bottom:none;}
+  .row.sel{background:var(--sunk);border-radius:12px;border-bottom-color:transparent;padding-left:12px;padding-right:10px;margin:0 -10px;}
   .row .date{font-family:var(--mono);font-size:13px;color:var(--muted);width:54px;flex-shrink:0;}
   .row .date .dow{display:block;font-size:9.5px;color:var(--faint);margin-top:1px;}
   .row .bar-wrap{flex:1;}
@@ -202,11 +204,11 @@
     <div class="today-right"><span class="today-label" id="todayLabel"></span><span class="syncpill" id="syncDot" title="Sync"><span class="syncdot"></span><span id="syncTxt">SYNC</span></span></div>
   </div>
 
-  <div class="page on" id="page-today">
+  <div class="page on" id="page-log">
     <div class="hero" id="hero">
-      <div class="hero-eyebrow" id="heroEyebrow">Cigarettes today</div>
+      <div class="logdate" id="logDateLabel">Yesterday</div>
       <div class="count-row">
-        <div class="count good" id="heroCount" role="button" tabindex="0" aria-label="Tap to type today's total">0</div>
+        <div class="count good" id="heroCount" role="button" tabindex="0" aria-label="Tap to type the day's total">0</div>
         <div class="count-unit">smoked</div>
       </div>
       <div class="status good" id="heroStatus"></div>
@@ -215,31 +217,32 @@
         <span id="streakText"></span>
       </div>
       <div class="meter" id="meter"></div>
-      <div class="meter-note" id="meterNote"></div>
       <div class="controls">
         <button class="step minus" id="btnMinus" aria-label="Minus one">&minus;</button>
         <button class="step plus" id="btnPlus"><span class="big">+</span>Smoked one</button>
         <button class="step plus5" id="btnPlus5" aria-label="Add five">+5</button>
       </div>
-      <div class="ctrl-hint">Tap the big number to type a total · <b>hold +/&minus;</b> to go fast</div>
     </div>
 
+    <div class="missing-card" id="catchupCard">
+      <div class="mtxt" id="catchupText"></div>
+      <button id="btnCatchup">Log it</button>
+    </div>
+
+    <div class="sec-title tight">Last 7 days</div>
     <div class="split">
       <div class="cell">
-        <div class="k">Owed today</div>
-        <div class="v zero" id="todayDue">$0</div>
-        <div class="sub" id="todayDueSub">within budget, free</div>
+        <div class="k">Cigarettes</div>
+        <div class="v neutral" id="weekCig">0</div>
+        <div class="sub">this week</div>
       </div>
       <div class="cell">
-        <div class="k">Total owed</div>
-        <div class="v neutral" id="totalDueMini">$0</div>
-        <div class="sub">owed to you</div>
+        <div class="k">Daily average</div>
+        <div class="v neutral" id="weekAvg">0</div>
+        <div class="sub" id="weekAvgSub">per logged day</div>
       </div>
     </div>
-  </div>
 
-  <div class="page" id="page-trend">
-    <div class="sec-title tight">Trends</div>
     <div class="range" id="rangeSwitch">
       <button data-r="7" class="on">7 days</button>
       <button data-r="30">30 days</button>
@@ -255,19 +258,14 @@
         </div>
       </div>
       <canvas id="cigChart"></canvas>
-      <div class="empty-hint" id="cigEmpty" style="display:none">No records yet — log one on Today.</div>
+      <div class="empty-hint" id="cigEmpty" style="display:none">No records yet — log a day above.</div>
     </div>
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="t">Total owed</div>
-        <div class="legend"><span><i class="swatch" style="height:6px;border-radius:2px;background:var(--over)"></i>cumulative</span></div>
-      </div>
-      <canvas id="moneyChart"></canvas>
-      <div class="empty-hint" id="moneyEmpty" style="display:none">Nothing owed yet.</div>
-    </div>
+
+    <div class="sec-title">Recent days</div>
+    <div class="rows" id="logRows"><div class="empty-hint">No records yet — log a day above.</div></div>
   </div>
 
-  <div class="page" id="page-bill">
+  <div class="page" id="page-money">
     <div class="total-card">
       <div class="k">Total owed</div>
       <div class="v"><small>$</small><span id="totalBig">0</span></div>
@@ -278,12 +276,14 @@
       </div>
     </div>
 
-    <div class="missing-card" id="missingCard">
-      <div class="mtxt" id="missingText">2 earlier days not logged<small>Fill them in to keep your history complete</small></div>
-      <button id="btnLogMissing">Log now</button>
+    <div class="chart-card" style="margin-top:16px;">
+      <div class="chart-head">
+        <div class="t">Owed over time</div>
+        <div class="legend"><span><i class="swatch" style="height:6px;border-radius:2px;background:var(--over)"></i>cumulative</span></div>
+      </div>
+      <canvas id="moneyChart"></canvas>
+      <div class="empty-hint" id="moneyEmpty" style="display:none">Nothing owed yet.</div>
     </div>
-
-    <button class="add-day" id="btnBackfill">+ Log another day</button>
 
     <div class="sec-title">Daily ledger</div>
     <div class="rows" id="billRows"><div class="empty-hint">No records yet.</div></div>
@@ -311,17 +311,13 @@
 
 <div class="nav">
   <div class="nav-inner">
-    <button class="on" data-p="today">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v4.8l3 1.8"/></svg>
-      <span class="lbl">Today</span>
+    <button class="on" data-p="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+      <span class="lbl">Log</span>
     </button>
-    <button data-p="trend">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18l5-6 4 3 6-8"/><path d="M4 20V4"/></svg>
-      <span class="lbl">Trends</span>
-    </button>
-    <button data-p="bill">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
-      <span class="lbl">Ledger</span>
+    <button data-p="money">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M14.5 9.3c0-1-1.1-1.8-2.5-1.8s-2.5.8-2.5 1.9c0 2.4 5 1.4 5 3.8 0 1.1-1.1 1.9-2.5 1.9s-2.5-.8-2.5-1.8"/></svg>
+      <span class="lbl">Money</span>
     </button>
   </div>
 </div>
@@ -459,57 +455,99 @@
     return streak;
   }
 
-  // ---------- Today ----------
-  function renderToday(){
-    const t=todayStr();
-    const rec=db.records[t];
-    const count=rec?rec.count:0;
-    const quota=db.settings.quota, price=db.settings.price;
-    const over=Math.max(0,count-quota);
-    const due=over*price;
+  // ---------- Log (record a day; defaults to yesterday) ----------
+  let logDate=defaultLogDate();
+  function defaultLogDate(){
+    const y=new Date();y.setHours(0,0,0,0);y.setDate(y.getDate()-1);
+    let s=ymd(y);
+    if(s<db.settings.start)s=db.settings.start;
+    if(s>todayStr())s=todayStr();
+    return s;
+  }
+  function relLabel(s){
+    if(s===todayStr())return 'Today';
+    const y=new Date();y.setHours(0,0,0,0);y.setDate(y.getDate()-1);
+    if(s===ymd(y))return 'Yesterday';
+    return DOWF[parseYmd(s).getDay()];
+  }
+  function renderLog(){
     const now=new Date();
     document.getElementById('todayLabel').textContent=`${DOWF[now.getDay()]}`;
-    document.getElementById('heroEyebrow').textContent=`${MON[now.getMonth()]} ${now.getDate()} · today`;
+    logDate=defaultLogDate();
+    const rec=db.records[logDate];
+    const count=rec?rec.count:0;
+    const quota=db.settings.quota;
+    const over=Math.max(0,count-quota);
+    const dd=parseYmd(logDate);
+    document.getElementById('logDateLabel').textContent=`${relLabel(logDate)} · ${MON[dd.getMonth()]} ${dd.getDate()}`;
 
     const cEl=document.getElementById('heroCount');
     cEl.textContent=count;cEl.className='count '+(over>0?'over':'good');
 
     const st=document.getElementById('heroStatus');
-    if(over>0){st.className='status over';st.textContent=`${over} over budget · you owe ${CUR}${due} today`;}
-    else if(count===0){st.className='status good';st.textContent=`None so far · budget ${quota}`;}
+    if(!rec){st.className='status good';st.textContent=`Not logged yet — tap the number to enter`;}
+    else if(over>0){st.className='status over';st.textContent=`${over} over your budget of ${quota}`;}
+    else if(count===0){st.className='status good';st.textContent=`Smoke-free day — amazing`;}
     else if(count===quota){st.className='status good';st.textContent=`Right at your budget of ${quota}`;}
     else{st.className='status good';st.textContent=`${quota-count} under budget — nice`;}
 
-    // streak badge
     const streak=goodStreak();
     const sb=document.getElementById('streakBadge');
     if(streak>=2){sb.classList.remove('hide');document.getElementById('streakText').textContent=`${streak}-day streak on target`;}
     else sb.classList.add('hide');
 
-    // meter
     const meter=document.getElementById('meter');meter.innerHTML='';
     const shownOver=Math.min(over,20);
     for(let i=1;i<=Math.max(quota,0);i++){const s=document.createElement('div');s.className='stick '+(i<=count?'filled':'empty');meter.appendChild(s);}
     for(let i=0;i<shownOver;i++){const s=document.createElement('div');s.className='stick over';meter.appendChild(s);}
-    const note=document.getElementById('meterNote');
-    note.textContent= over>0 ? `First ${quota} free · ${CUR}${price} each after${over>20?' (showing first 20 over)':''}` : `${count}/${quota} · within budget`;
 
-    const td=document.getElementById('todayDue');
-    td.textContent=CUR+due;td.className='v '+(due>0?'money':'zero');
-    document.getElementById('todayDueSub').textContent=due>0?`${over} over × ${CUR}${price}`:'within budget, free';
-
-    const tm=document.getElementById('totalDueMini');const tot=totalDue();
-    tm.textContent=CUR+tot;tm.className='v '+(tot>0?'money':'zero');
+    renderCatchup();
+    renderWeekStats();
+    renderLogRows();
+    if(document.getElementById('page-log').classList.contains('on'))drawCig();
+  }
+  function renderLogRows(){
+    const wrap=document.getElementById('logRows');
+    const dates=Object.keys(db.records).sort().reverse();
+    if(!dates.length){wrap.innerHTML='<div class="empty-hint">No records yet — log a day above.</div>';return;}
+    const maxCount=Math.max(...dates.map(d=>db.records[d].count),db.settings.quota,1);
+    wrap.innerHTML='';
+    dates.forEach(d=>{
+      const r=db.records[d];const over=r.count>r.quota;const dd=parseYmd(d);
+      const row=document.createElement('div');row.className='row'+(d===logDate?' sel':'');
+      const pct=Math.min(100,r.count/maxCount*100);
+      row.innerHTML=`<div class="date">${dd.getMonth()+1}/${dd.getDate()}<span class="dow">${DOW[dd.getDay()]}</span></div>
+        <div class="bar-wrap"><div class="cnt"><b>${r.count}</b><span>cig${r.count===1?'':'s'} ${over?'· '+(r.count-r.quota)+' over':''}</span></div>
+        <div class="mini-bar"><i style="width:${pct}%;background:${over?'var(--over)':'var(--good)'}"></i></div></div>
+        <div class="edit">&#9998;</div>`;
+      row.addEventListener('click',()=>openSheet(d));
+      wrap.appendChild(row);
+    });
+  }
+  function renderCatchup(){
+    const miss=missingDays().filter(d=>d!==logDate);
+    const c=document.getElementById('catchupCard');
+    if(miss.length){c.classList.add('on');
+      document.getElementById('catchupText').innerHTML=`${miss.length} earlier day${miss.length>1?'s':''} not logged<small>Tap to fill the oldest one</small>`;
+      document.getElementById('btnCatchup').onclick=()=>openSheet(miss[0]);
+    }else c.classList.remove('on');
+  }
+  function renderWeekStats(){
+    const end=new Date();end.setHours(0,0,0,0);let tot=0,n=0;
+    for(let i=0;i<7;i++){const d=new Date(end);d.setDate(d.getDate()-i);const r=db.records[ymd(d)];if(r){tot+=r.count;n++;}}
+    document.getElementById('weekCig').textContent=tot;
+    document.getElementById('weekAvg').textContent=n?Math.round(tot/n):0;
+    document.getElementById('weekAvgSub').textContent=n?`over ${n} logged day${n>1?'s':''}`:'no days logged yet';
   }
 
-  // ---------- Ledger ----------
+  // ---------- Money ----------
   function missingDays(){
     const out=[];const start=parseYmd(db.settings.start);const end=new Date();end.setHours(0,0,0,0);
     end.setDate(end.getDate()-1); // up to yesterday
     for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){if(!db.records[ymd(d)])out.push(ymd(d));}
     return out;
   }
-  function renderBill(){
+  function renderMoney(){
     const dates=Object.keys(db.records).sort().reverse();
     document.getElementById('totalBig').textContent=totalDue();
     document.getElementById('daysCount').textContent=dates.length;
@@ -518,32 +556,23 @@
     document.getElementById('overDays').textContent=overD;
     document.getElementById('goodDays').textContent=goodD;
 
-    const miss=missingDays();
-    const mc=document.getElementById('missingCard');
-    if(miss.length){mc.classList.add('on');document.getElementById('missingText').innerHTML=`${miss.length} earlier day${miss.length>1?'s':''} not logged<small>Since ${fmtShort(db.settings.start)} — fill them in</small>`;
-      document.getElementById('btnLogMissing').onclick=()=>openSheet(null,{presetDate:miss[0]});}
-    else mc.classList.remove('on');
-
     const wrap=document.getElementById('billRows');
     if(!dates.length){wrap.innerHTML='<div class="empty-hint">No records yet.</div>';}
     else{
-      const maxCount=Math.max(...dates.map(d=>db.records[d].count),db.settings.quota,1);
       wrap.innerHTML='';
       dates.forEach(d=>{
         const r=db.records[d];const due=dueOf(r);const over=r.count>r.quota;const dd=parseYmd(d);
         const row=document.createElement('div');row.className='row';
-        const pct=Math.min(100,r.count/maxCount*100);
         row.innerHTML=`<div class="date">${dd.getMonth()+1}/${dd.getDate()}<span class="dow">${DOW[dd.getDay()]}</span></div>
-          <div class="bar-wrap"><div class="cnt"><b>${r.count}</b><span>cig${r.count===1?'':'s'} ${over?'· '+(r.count-r.quota)+' over':''}</span></div>
-          <div class="mini-bar"><i style="width:${pct}%;background:${over?'var(--over)':'var(--good)'}"></i></div></div>
-          <div class="amt ${due>0?'due':'zero'}">${CUR}${due}</div><div class="edit">&#9998;</div>`;
-        row.addEventListener('click',()=>openSheet(d));
+          <div class="bar-wrap"><div class="cnt"><span>${over?(r.count-r.quota)+' over budget · '+r.count+' cigs':'on target · '+r.count+' cigs'}</span></div></div>
+          <div class="amt ${due>0?'due':'zero'}">${CUR}${due}</div>`;
         wrap.appendChild(row);
       });
     }
     document.getElementById('setQuota').value=db.settings.quota;
     document.getElementById('setPrice').value=db.settings.price;
     document.getElementById('setStart').value=db.settings.start;
+    if(document.getElementById('page-money').classList.contains('on'))drawMoney();
   }
 
   // ---------- charts ----------
@@ -587,7 +616,7 @@
     [...new Set(idxs)].forEach(i=>ctx.fillText(fmtShort(data[i].date),X(i),h-6));
   }
   function drawMoney(){
-    const cv=document.getElementById('moneyChart');const data=seriesForRange(currentRange);
+    const cv=document.getElementById('moneyChart');const data=seriesForRange(0);
     let cum=0;const pts=data.map(d=>{cum+=d.due;return {date:d.date,v:cum};});
     const has=pts.length&&cum>0;
     document.getElementById('moneyEmpty').style.display=has?'none':'block';cv.style.display=has?'block':'none';
@@ -603,7 +632,6 @@
     (pts.length<=1?[0]:[0,pts.length-1]).forEach(i=>ctx.fillText(fmtShort(pts[i].date),X(i),h-6));
   }
   let currentRange=7;
-  function renderTrend(){drawCig();drawMoney();}
 
   // ---------- sheet ----------
   let editDate=null, todayMode=false;
@@ -653,21 +681,21 @@
     save();closeSheet();renderAll();maybeCelebrate();
     toast('Saved '+fmtShort(date));
   };
-  document.getElementById('btnBackfill').onclick=()=>openSheet(null,{});
   document.getElementById('sheetDelete').onclick=()=>{
     if(!editDate||!db.records[editDate])return;
     if(confirm('Delete the record for '+fmtShort(editDate)+'? This cannot be undone.')){
       delete db.records[editDate];save();closeSheet();renderAll();maybeCelebrate();toast('Removed '+fmtShort(editDate));
     }
   };
-  document.getElementById('heroCount').onclick=()=>openSheet(todayStr(),{today:true});
-  document.getElementById('heroCount').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSheet(todayStr(),{today:true});}});
+  document.getElementById('heroCount').onclick=()=>openSheet(logDate);
+  document.getElementById('heroCount').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSheet(logDate);}});
 
   // ---------- add / hold ----------
-  function addToday(n){const t=todayStr();const r=ensureRec(t);r.count=Math.max(0,r.count+n);save();renderToday();}
+  function addToDate(date,n){const r=ensureRec(date);r.count=Math.max(0,r.count+n);save();renderLog();}
+  function addLog(n){addToDate(logDate,n);}
   function bindHold(el,step){
     let t1,t2,active=false;
-    const doStep=()=>{addToday(step);};
+    const doStep=()=>{addLog(step);};
     const start=(e)=>{e.preventDefault();active=true;doStep();t1=setTimeout(()=>{t2=setInterval(()=>{if(active)doStep();},110);},420);};
     const stop=()=>{active=false;clearTimeout(t1);clearInterval(t2);maybeCelebrate();};
     el.addEventListener('pointerdown',start);
@@ -678,7 +706,7 @@
   }
   bindHold(document.getElementById('btnPlus'),1);
   bindHold(document.getElementById('btnMinus'),-1);
-  document.getElementById('btnPlus5').onclick=()=>{addToday(5);maybeCelebrate();};
+  document.getElementById('btnPlus5').onclick=()=>{addLog(5);maybeCelebrate();};
 
   // ---------- settings ----------
   document.getElementById('setQuota').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.quota=v;save();renderAll();toast('Budget set to '+v);});
@@ -687,13 +715,13 @@
   document.getElementById('btnReset').onclick=()=>{if(confirm('Clear all records and the tab? This cannot be undone.')){db={settings:{quota:10,price:10,start:'2026-08-05'},records:{},lastCeleb:0,seeded:null};save();ensureTodaySeed();renderAll();toast('Cleared');}};
 
   // ---------- nav ----------
-  const pages={today:'page-today',trend:'page-trend',bill:'page-bill'};
+  const pages={log:'page-log',money:'page-money'};
   document.querySelectorAll('.nav button').forEach(b=>{
     b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
       const p=b.dataset.p;Object.entries(pages).forEach(([k,id])=>document.getElementById(id).classList.toggle('on',k===p));
-      if(p==='trend')renderTrend();if(p==='bill')renderBill();window.scrollTo(0,0);};
+      if(p==='log')renderLog();if(p==='money')renderMoney();window.scrollTo(0,0);};
   });
-  document.querySelectorAll('#rangeSwitch button').forEach(b=>{b.onclick=()=>{document.querySelectorAll('#rangeSwitch button').forEach(x=>x.classList.remove('on'));b.classList.add('on');currentRange=parseInt(b.dataset.r,10);renderTrend();};});
+  document.querySelectorAll('#rangeSwitch button').forEach(b=>{b.onclick=()=>{document.querySelectorAll('#rangeSwitch button').forEach(x=>x.classList.remove('on'));b.classList.add('on');currentRange=parseInt(b.dataset.r,10);drawCig();};});
 
   // ---------- toast ----------
   let toastT;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),1800);}
@@ -739,15 +767,14 @@
   function stopConfetti(){if(confAF)cancelAnimationFrame(confAF);confAF=null;const cv=document.getElementById('confetti');cv.classList.remove('on');cv.getContext('2d').clearRect(0,0,cv.width,cv.height);}
 
   // ---------- render all ----------
-  function renderAll(){renderToday();
-    if(document.getElementById('page-trend').classList.contains('on'))renderTrend();
-    if(document.getElementById('page-bill').classList.contains('on'))renderBill();
+  function renderAll(){renderLog();
+    if(document.getElementById('page-money').classList.contains('on'))renderMoney();
   }
   let lastDay=todayStr();
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(todayStr()!==lastDay)lastDay=todayStr();const s=ensureTodaySeed();renderAll();maybeCelebrate();if(s&&syncReady)cloudPush();cloudPull();}});
-  window.addEventListener('resize',()=>{if(document.getElementById('page-trend').classList.contains('on'))renderTrend();});
+  window.addEventListener('resize',()=>{if(document.getElementById('page-log').classList.contains('on'))drawCig();if(document.getElementById('page-money').classList.contains('on'))drawMoney();});
 
-  renderToday();
+  renderLog();
   cloudInit();
 })();
 </script>

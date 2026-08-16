@@ -21,14 +21,29 @@
 - 欠款 = `max(0, count - quota) * price`（前 quota 根免费，之后每根 price）
 - 货币符号：JS 常量 `const CUR='$';`（当前美元 USD）。改币种改这一处即可；HTML 里另有 3 处硬编码符号（`todayDue` / `totalDueMini` / `totalBig` 的 `<small>`）需同步改。
 
+## 结构：两个 tab，按角色分工
+
+**核心理念**：抽烟的人和收钱的人看不同的东西。真实使用场景是「过了半夜一次性记昨天抽了多少根」，不是实时累加今天。
+
+- **Log tab（`page-log`）—— 给戒烟本人，只讲香烟、不谈钱**
+  - 顶部大卡固定对准**昨天**（`logDate=defaultLogDate()`，每次 `renderLog` 重算；无左右切换，看/改别的天用下面的 Recent days 列表）；点大数字 `openSheet(logDate)` 打字；`−/+/+5` = `addLog()`。
+  - `renderCatchup()`：更早没记的日子提示补登（点一下把该日载入大卡）。
+  - `renderWeekStats()`：近 7 天香烟总数 + 日均。
+  - `drawCig()`：每天香烟曲线（7 天视图标数字，见下）。
+  - `renderLogRows()`：**可编辑**的「Recent days」列表（`#logRows`），只显示香烟根数 + 铅笔，点行 `openSheet(d)` 改。**修改功能集中在这里。**
+- **Money tab（`page-money`）—— 给收钱的人，只讲钱、只读**
+  - 总欠款卡 + `drawMoney()` 累计欠款曲线（全时段 `seriesForRange(0)`）+ 规则设置。
+  - `renderMoney()` 的日账单（`#billRows`）**只读**：日期 + 当天欠款，无铅笔、不可点（防止收钱的人改抽烟数）。
+
+导航只有 2 个（`pages={log:'page-log',money:'page-money'}`）。
+
 ## 功能行为（易忘的产品细节）
 
-- **补登**：在 Ledger 页 `+ Log another day` 按钮（`btnBackfill` → `openSheet(null,{})`），可选日期补录历史。
-- **Trends 曲线数字标注**（`drawCig()`）：每天抽烟数量标在点上，超标用 `--over`(红)、达标用 `--ink`(黑)。
-  只在点数少时显示（`if(data.length<=7)`），即 7 天视图；30 天/All 保持曲线清爽、不标数字。
-- **庆祝弹窗**（`maybeCelebrate()`）：连续达标满 **7 天**才弹（里程碑 `Math.floor(streak/7)*7`，阈值 `>=7`）。
-  断了 streak 后 `lastCeleb` 回落，重新连满 7 天会再弹。改这个阈值只需改 `/7` 和 `>=7` 两处。
-  注意：Today 卡片上那个小 `streak-badge` 是另一个元素，≥2 天就显示，与弹窗无关。
+- **补登/改**：全在 Log tab —— 大卡切日子、或点 Recent days 行开 `openSheet`。Money tab 不能改。
+- **曲线数字标注**（`drawCig()`）：每天抽烟数量标在点上，超标 `--over`(红)、达标 `--ink`(黑)。只在 `if(data.length<=7)`（7 天视图）显示；30 天/All 不标。
+- **庆祝弹窗**（`maybeCelebrate()`）：连续达标满 **7 天**才弹（`Math.floor(streak/7)*7`，阈值 `>=7`）；断 streak 后重新连满会再弹。改阈值只改 `/7` 和 `>=7`。
+  注意：Log 卡片上的小 `streak-badge` 是另一元素，≥2 天就显示，与弹窗无关。
+- **今天种子**：`ensureTodaySeed()` 仍会把今天预填到额度（保留旧行为、不改数据）；Log 默认记昨天，今天照旧自动出现在列表/曲线里（额度值、$0）。
 
 ## 本地测试技巧（不污染线上账本）
 
