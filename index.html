@@ -595,11 +595,16 @@
     document.getElementById('cigEmpty').style.display=has?'none':'block';cv.style.display=has?'block':'none';
     if(!has)return;
     const {ctx,w,h}=setupCanvas(cv,180);const padL=26,padR=8,padT=14,padB=22;const quota=db.settings.quota;
-    const maxV=Math.max(quota+2,...data.filter(d=>d.count!=null).map(d=>d.count))+1;
+    // Y-axis tiers land on meaningful reward thresholds: 0, budget(quota), then +5 steps up to cover the data
+    const dataMax=Math.max(0,...data.filter(d=>d.count!=null).map(d=>d.count));
+    const tiers=[0];if(quota>0)tiers.push(quota);
+    let tv=quota+5;while(tv<dataMax){tiers.push(tv);tv+=5;}tiers.push(tv);
+    const ticks=[...new Set(tiers)].sort((a,b)=>a-b);
+    const maxV=ticks[ticks.length-1];
     const X=i=>padL+(w-padL-padR)*(data.length<=1?0.5:i/(data.length-1));
     const Y=v=>padT+(h-padT-padB)*(1-v/maxV);
     ctx.font='10px "Space Mono",monospace';ctx.fillStyle=css('--faint');ctx.textAlign='right';
-    [0,Math.round(maxV/2),maxV].forEach(v=>{const y=Y(v);ctx.strokeStyle=css('--line');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(w-padR,y);ctx.stroke();ctx.fillText(v,padL-6,y+3);});
+    ticks.forEach(v=>{const y=Y(v);ctx.strokeStyle=css('--line');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(w-padR,y);ctx.stroke();ctx.fillText(v,padL-6,y+3);});
     ctx.strokeStyle=css('--over');ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(padL,Y(quota));ctx.lineTo(w-padR,Y(quota));ctx.stroke();ctx.setLineDash([]);
     const avg=movingAvg(data,7);ctx.strokeStyle=css('--good');ctx.lineWidth=2;ctx.beginPath();let st=false;
     avg.forEach((v,i)=>{if(v==null)return;const x=X(i),y=Y(v);if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y);});ctx.stroke();
