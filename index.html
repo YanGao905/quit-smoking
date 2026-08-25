@@ -541,7 +541,7 @@
   }
   function renderLogRows(){
     const wrap=document.getElementById('logRows');
-    const dates=Object.keys(db.records).sort().reverse();
+    const dates=Object.keys(db.records).filter(d=>d<todayStr()).sort().reverse(); // exclude today — it's not over yet; latest shown is yesterday
     if(!dates.length){wrap.innerHTML='<div class="empty-hint">No records yet — log a day above.</div>';return;}
     const maxCount=Math.max(...dates.map(d=>db.records[d].count),db.settings.quota,1);
     wrap.innerHTML='';
@@ -566,7 +566,7 @@
     }else c.classList.remove('on');
   }
   function renderWeekStats(){
-    const end=new Date();end.setHours(0,0,0,0);let tot=0,n=0;
+    const end=new Date();end.setHours(0,0,0,0);end.setDate(end.getDate()-1);let tot=0,n=0; // last 7 completed days ending yesterday
     for(let i=0;i<7;i++){const d=new Date(end);d.setDate(d.getDate()-i);const r=db.records[ymd(d)];if(r){tot+=r.count;n++;}}
     document.getElementById('weekCig').textContent=tot;
     document.getElementById('weekAvg').textContent=n?Math.round(tot/n):0;
@@ -581,8 +581,8 @@
     return out;
   }
   function renderMoney(){
-    const dates=Object.keys(db.records).sort().reverse();
-    document.getElementById('totalBig').textContent=totalDue();
+    const dates=Object.keys(db.records).filter(d=>d<todayStr()).sort().reverse(); // exclude today — not over yet; latest is yesterday
+    document.getElementById('totalBig').textContent=dates.reduce((a,d)=>a+dueOf(db.records[d]),0);
     document.getElementById('daysCount').textContent=dates.length;
     let overD=0,goodD=0;
     dates.forEach(d=>{const r=db.records[d];if(r.count>r.quota)overD++;else goodD++;});
@@ -610,7 +610,7 @@
 
   // ---------- charts ----------
   function seriesForRange(days){
-    const end=new Date();end.setHours(0,0,0,0);
+    const end=new Date();end.setHours(0,0,0,0);end.setDate(end.getDate()-1); // series ends yesterday — today isn't over yet
     let start;
     if(days===0){start=parseYmd(db.settings.start);}
     else{start=new Date(end);start.setDate(start.getDate()-(days-1));const ps=parseYmd(db.settings.start);if(start<ps)start=ps;}
