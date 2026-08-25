@@ -54,6 +54,11 @@
   .streak-badge svg{width:12px;height:12px;}
   .streak-badge.hide{display:none;}
   .logdate{font-family:var(--serif);font-weight:500;font-size:19px;margin-top:4px;}
+  .notif{display:flex;align-items:center;gap:9px;margin:0 0 18px;padding:11px 14px;border-radius:12px;font-size:13px;font-weight:500;line-height:1.35;border:1px solid transparent;}
+  .notif.hide{display:none;}
+  .notif-ic{font-size:15px;line-height:1;flex-shrink:0;}
+  .notif.reward{background:rgba(76,107,84,.11);color:var(--good);border-color:rgba(76,107,84,.28);}
+  .notif.penalty{background:rgba(176,91,65,.11);color:var(--over);border-color:rgba(176,91,65,.30);}
 
   .meter{display:flex;flex-wrap:wrap;gap:6px;margin:24px 0 0;}
   .stick{width:6px;height:42px;border-radius:2px;position:relative;transition:all .25s ease;}
@@ -206,6 +211,7 @@
 
   <div class="page on" id="page-log">
     <div class="hero" id="hero">
+      <div class="notif hide" id="notifBanner"><span class="notif-ic" id="notifIcon"></span><span id="notifText"></span></div>
       <div class="logdate" id="logDateLabel">Yesterday</div>
       <div class="count-row">
         <div class="count good" id="heroCount" role="button" tabindex="0" aria-label="Tap to type the day's total">0</div>
@@ -455,6 +461,32 @@
     return streak;
   }
 
+  // consecutive COMPLETED days (ending YESTERDAY) within(true)/over(false) budget — drives the reminder banner.
+  // Starts at yesterday so today's auto-seeded record can't inflate or mask the streak.
+  function completedStreak(within){
+    let streak=0;
+    const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-1);
+    const start=parseYmd(db.settings.start);
+    while(d>=start){
+      const r=db.records[ymd(d)];
+      if(!r)break;
+      if((r.count<=r.quota)===within)streak++;else break;
+      d.setDate(d.getDate()-1);
+    }
+    return streak;
+  }
+  const REWARD_GOAL=7; // consecutive days within budget → reward; over budget → penalty
+  function renderNotif(){
+    const el=document.getElementById('notifBanner'),t=document.getElementById('notifText'),ic=document.getElementById('notifIcon');
+    if(!el)return;
+    const good=completedStreak(true),bad=completedStreak(false);
+    if(good>=4&&good<REWARD_GOAL){const n=REWARD_GOAL-good;el.className='notif reward';ic.textContent='🎉';
+      t.textContent=`Keep it up! ${n} more day${n>1?'s':''} to your reward`;}
+    else if(bad>=4&&bad<REWARD_GOAL){const n=REWARD_GOAL-bad;el.className='notif penalty';ic.textContent='⚠️';
+      t.textContent=`Careful! ${n} more day${n>1?'s':''} before the penalty`;}
+    else{el.className='notif hide';}
+  }
+
   // ---------- Log (record a day; defaults to yesterday) ----------
   let logDate=defaultLogDate();
   function defaultLogDate(){
@@ -480,6 +512,7 @@
     const over=Math.max(0,count-quota);
     const dd=parseYmd(logDate);
     document.getElementById('logDateLabel').textContent=`${relLabel(logDate)} · ${MON[dd.getMonth()]} ${dd.getDate()}`;
+    renderNotif();
 
     const cEl=document.getElementById('heroCount');
     cEl.textContent=count;cEl.className='count '+(over>0?'over':'good');
@@ -491,7 +524,7 @@
     else if(count===quota){st.className='status good';st.textContent=`Right at your budget of ${quota}`;}
     else{st.className='status good';st.textContent=`${quota-count} under budget — nice`;}
 
-    const streak=goodStreak();
+    const streak=completedStreak(true);
     const sb=document.getElementById('streakBadge');
     if(streak>=2){sb.classList.remove('hide');document.getElementById('streakText').textContent=`${streak}-day streak on target`;}
     else sb.classList.add('hide');
@@ -734,7 +767,7 @@
   // ---------- celebration ----------
   const reduceMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
   function maybeCelebrate(){
-    const streak=goodStreak();
+    const streak=completedStreak(true);
     const milestone=Math.floor(streak/7)*7;
     if(milestone>=7 && milestone>db.lastCeleb){db.lastCeleb=milestone;save();showCelebration(streak);}
     else if(streak<db.lastCeleb){db.lastCeleb=milestone;save();}
