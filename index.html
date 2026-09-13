@@ -439,7 +439,7 @@
     const t=todayStr();
     if(db.seeded!==t){
       let changed=false;
-      if(!db.records[t]){db.records[t]={count:db.settings.quota,quota:db.settings.quota,price:db.settings.price};changed=true;}
+      if(!db.records[t]){db.records[t]={count:0,quota:db.settings.quota,price:db.settings.price};changed=true;} // today starts at 0 (placeholder) — so an unlogged day reads 0, not a fake budget-hit 10
       db.seeded=t; save();
       return changed;
     }
