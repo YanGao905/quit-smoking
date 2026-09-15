@@ -393,10 +393,30 @@
     if(r._ts==null)r._ts=0;
     return r;
   }
+  // Merge two ledger blobs WITHOUT losing edits: union of days, per-day newest edit-time (m) wins;
+  // settings by newest _m; lastCeleb max. This is what makes cross-device sync safe — a stale device
+  // can no longer clobber the other's recent writes, because every push/pull merges first.
+  function mergeBlobs(x,y){
+    x=normalize(x); y=normalize(y);
+    const out={records:{}, lastCeleb:Math.max(x.lastCeleb||0,y.lastCeleb||0),
+               seeded:((x.seeded||'')>(y.seeded||'')?x.seeded:y.seeded),
+               _ts:Math.max(x._ts||0,y._ts||0)};
+    const xm=(x.settings&&x.settings._m)||0, ym=(y.settings&&y.settings._m)||0;
+    out.settings = ym>xm ? Object.assign({},y.settings) : Object.assign({},x.settings);
+    const keys=new Set([...Object.keys(x.records),...Object.keys(y.records)]);
+    keys.forEach(d=>{const a=x.records[d], b=y.records[d];
+      if(a&&b) out.records[d] = ((b.m||0) > (a.m||0)) ? b : a;
+      else out.records[d] = a||b;});
+    return out;
+  }
   async function pushNow(){
+    // read-merge-write: pull latest cloud, merge our local changes into it, then write the merged result.
+    try{const g=await fetch(SB_ROW+'&select=data,updated_at',{headers:SB_HEAD,cache:'no-store'});
+      if(g.ok){const rows=await g.json(); if(rows.length&&rows[0].data&&rows[0].data.records) db=mergeBlobs(db,rows[0].data);}
+    }catch(e){}
     const ts=Date.now();db._ts=ts;persistLocal();
     try{const r=await fetch(SB_ROW,{method:'PATCH',headers:SB_HEAD,body:JSON.stringify({data:db,updated_at:new Date(ts).toISOString()})});
-      if(r.ok){cloudTs=ts;pendingPush=false;setSync('ok');return true;}}catch(e){}
+      if(r.ok){cloudTs=ts;pendingPush=false;setSync('ok');renderAll();return true;}}catch(e){}
     setSync('off');return false;
   }
   function cloudPush(){pendingPush=true;setSync('sync');clearTimeout(pushT);pushT=setTimeout(pushNow,600);}
@@ -406,21 +426,18 @@
       if(!r.ok){setSync('off');return;}
       const rows=await r.json();setSync('ok');
       if(!rows.length)return;const row=rows[0];const ts=Date.parse(row.updated_at)||0;
-      if(ts>cloudTs&&row.data&&row.data.records){cloudTs=ts;db=normalize(row.data);persistLocal();renderAll();maybeCelebrate();}
+      if(ts>cloudTs&&row.data&&row.data.records){cloudTs=ts;db=mergeBlobs(db,row.data);persistLocal();renderAll();maybeCelebrate();}
     }catch(e){setSync('off');}
   }
   async function cloudInit(){
-    let adopted=false;
     try{const r=await fetch(SB_ROW+'&select=data,updated_at',{headers:SB_HEAD,cache:'no-store'});
       if(r.ok){const rows=await r.json();setSync('ok');const row=rows[0];
-        const cTs=row?(Date.parse(row.updated_at)||0):0;const cloudHas=row&&row.data&&row.data.records;
-        const localTs=db._ts||0;
-        if(cloudHas&&cTs>=localTs){cloudTs=cTs;db=normalize(row.data);persistLocal();adopted=true;}
+        if(row&&row.data&&row.data.records){cloudTs=Date.parse(row.updated_at)||0;db=mergeBlobs(db,row.data);persistLocal();}
       }else setSync('off');
     }catch(e){setSync('off');}
-    const seeded=ensureTodaySeed();
+    ensureTodaySeed();
     renderAll();maybeCelebrate();
-    if(!adopted||seeded)await pushNow();
+    await pushNow();   // always converge: merge-write local (incl. today's seed & any offline edits) up
     syncReady=true;
     setInterval(()=>{if(document.hidden)return;if(pendingPush)cloudPush();else cloudPull();},4000);
   }
@@ -439,7 +456,7 @@
     const t=todayStr();
     if(db.seeded!==t){
       let changed=false;
-      if(!db.records[t]){db.records[t]={count:0,quota:db.settings.quota,price:db.settings.price};changed=true;} // today starts at 0 (placeholder) — so an unlogged day reads 0, not a fake budget-hit 10
+      if(!db.records[t]){db.records[t]={count:0,quota:db.settings.quota,price:db.settings.price,m:Date.now()};changed=true;} // today starts at 0 (placeholder) — so an unlogged day reads 0, not a fake budget-hit 10
       db.seeded=t; save();
       return changed;
     }
@@ -716,6 +733,7 @@
     let v=parseInt(document.getElementById('sheetCount').value,10);if(isNaN(v)||v<0)v=0;
     if(db.records[date])db.records[date].count=v;
     else db.records[date]={count:v,quota:db.settings.quota,price:db.settings.price};
+    db.records[date].m=Date.now();
     save();closeSheet();renderAll();maybeCelebrate();
     toast('Saved '+fmtShort(date));
   };
@@ -729,7 +747,7 @@
   document.getElementById('heroCount').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSheet(logDate);}});
 
   // ---------- add / hold ----------
-  function addToDate(date,n){const r=ensureRec(date);r.count=Math.max(0,r.count+n);save();renderLog();}
+  function addToDate(date,n){const r=ensureRec(date);r.count=Math.max(0,r.count+n);r.m=Date.now();save();renderLog();}
   function addLog(n){addToDate(logDate,n);}
   function bindHold(el,step){
     let t1,t2,active=false;
@@ -747,9 +765,9 @@
   document.getElementById('btnPlus5').onclick=()=>{addLog(5);maybeCelebrate();};
 
   // ---------- settings ----------
-  document.getElementById('setQuota').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.quota=v;save();renderAll();toast('Budget set to '+v);});
-  document.getElementById('setPrice').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.price=v;save();renderAll();toast('Price set to '+CUR+v);});
-  document.getElementById('setStart').addEventListener('change',e=>{if(e.target.value){db.settings.start=e.target.value;save();renderAll();toast('Start date updated');}});
+  document.getElementById('setQuota').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.quota=v;db.settings._m=Date.now();save();renderAll();toast('Budget set to '+v);});
+  document.getElementById('setPrice').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.price=v;db.settings._m=Date.now();save();renderAll();toast('Price set to '+CUR+v);});
+  document.getElementById('setStart').addEventListener('change',e=>{if(e.target.value){db.settings.start=e.target.value;db.settings._m=Date.now();save();renderAll();toast('Start date updated');}});
   document.getElementById('btnReset').onclick=()=>{if(confirm('Clear all records and the tab? This cannot be undone.')){db={settings:{quota:10,price:10,start:'2026-08-05'},records:{},lastCeleb:0,seeded:null};save();ensureTodaySeed();renderAll();toast('Cleared');}};
 
   // ---------- nav ----------
