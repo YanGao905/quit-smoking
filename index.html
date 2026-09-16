@@ -312,7 +312,7 @@
     <p style="font-size:11px;color:var(--faint);margin:11px 4px 0;">Changes apply going forward; past days keep their own rates.</p>
 
     <button class="danger" id="btnReset">Clear all data</button>
-    <div style="text-align:center;font-size:10px;letter-spacing:.08em;color:var(--faint);font-family:var(--mono);margin-top:20px;">build 2026-09-16 · merge-sync ✓</div>
+    <div id="verStamp" style="text-align:center;font-size:10px;letter-spacing:.08em;color:var(--faint);font-family:var(--mono);margin-top:20px;">build · merge-sync ✓</div>
   </div>
 </div>
 
@@ -370,6 +370,23 @@
   const DOWF=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const CUR='$';
+  const BUILD='2026-09-16e';
+  // Auto-update: on launch/foreground, fetch this page fresh and compare BUILD; if a newer build is
+  // live, reload once to it. Fixes the "home-screen app stuck on a cached old version" problem for good.
+  function checkUpdate(){
+    try{fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{
+      const m=t.match(/const BUILD='([^']+)'/);
+      if(m&&m[1]&&m[1]!==BUILD){
+        let tried='';try{tried=sessionStorage.getItem('autoup')||'';}catch(e){}
+        if(tried===m[1])return; // already reloaded for this build this session — never loop
+        try{sessionStorage.setItem('autoup',m[1]);}catch(e){}
+        location.replace(location.pathname+'?v='+encodeURIComponent(m[1]));
+      }
+    }).catch(()=>{});}catch(e){}
+  }
+  checkUpdate();
+  let _lastUpChk=Date.now();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-_lastUpChk>60000){_lastUpChk=Date.now();checkUpdate();}});
 
   let db=load();
   function load(){
@@ -831,6 +848,7 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(todayStr()!==lastDay)lastDay=todayStr();const s=ensureTodaySeed();renderAll();maybeCelebrate();if(s&&syncReady)cloudPush();cloudPull();}});
   window.addEventListener('resize',()=>{if(document.getElementById('page-log').classList.contains('on'))drawCig();if(document.getElementById('page-money').classList.contains('on'))drawMoney();});
 
+  {const vs=document.getElementById('verStamp');if(vs)vs.textContent='build '+BUILD+' · merge-sync ✓';}
   renderLog();
   cloudInit();
 })();
