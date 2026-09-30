@@ -297,11 +297,15 @@
     <div class="sec-title">Rules</div>
     <div class="set-card">
       <div class="set-row">
-        <div class="l">Daily free budget<small>stays free at or under this</small></div>
+        <div class="l">Reward / penalty target<small>streak counts as over above this</small></div>
+        <input id="setTarget" type="number" inputmode="numeric" min="0" step="1">
+      </div>
+      <div class="set-row">
+        <div class="l">Free budget (no fine)<small>no charge at or under this</small></div>
         <input id="setQuota" type="number" inputmode="numeric" min="0" step="1">
       </div>
       <div class="set-row">
-        <div class="l">Cost per extra<small>per cigarette over budget</small></div>
+        <div class="l">Cost per extra<small>per cigarette over the free budget</small></div>
         <input id="setPrice" type="number" inputmode="numeric" min="0" step="1">
       </div>
       <div class="set-row">
@@ -370,7 +374,7 @@
   const DOWF=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const CUR='$';
-  const BUILD='2026-09-16e';
+  const BUILD='2026-09-30a';
   // Auto-update: on launch/foreground, fetch this page fresh and compare BUILD; if a newer build is
   // live, reload once to it. Fixes the "home-screen app stuck on a cached old version" problem for good.
   function checkUpdate(){
@@ -389,6 +393,7 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-_lastUpChk>60000){_lastUpChk=Date.now();checkUpdate();}});
 
   let db=load();
+  if(db.settings.target==null)db.settings.target=db.settings.quota; // reward/penalty target; defaults to the money budget
   function load(){
     try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.settings&&r.records){r.settings.start=r.settings.start||'2026-08-05';if(!r._migStart){if(r.settings.start<'2026-08-05')r.settings.start='2026-08-05';r._migStart=true;localStorage.setItem(KEY,JSON.stringify(r));}if(r.lastCeleb==null)r.lastCeleb=0;return r;}}catch(e){}
     return {settings:{quota:10,price:10,start:'2026-08-05'}, records:{}, lastCeleb:0, seeded:null};
@@ -407,6 +412,7 @@
   function normalize(r){
     if(!r||!r.settings||!r.records)return {settings:{quota:10,price:10,start:'2026-08-05'},records:{},lastCeleb:0,seeded:null,_ts:0};
     r.settings.start=r.settings.start||'2026-08-05';
+    if(r.settings.target==null)r.settings.target=r.settings.quota;
     if(r.lastCeleb==null)r.lastCeleb=0;
     if(r._ts==null)r._ts=0;
     return r;
@@ -465,16 +471,17 @@
   function parseYmd(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
   function fmtShort(s){const d=parseYmd(s);return `${d.getMonth()+1}/${d.getDate()}`;}
 
-  function dueOf(rec){if(!rec)return 0;return Math.max(0,rec.count-rec.quota)*rec.price;}
+  function dueOf(rec){if(!rec)return 0;return Math.max(0,rec.count-rec.quota)*rec.price;} // money/fine uses quota (money budget)
+  function tgtOf(rec){return rec?(rec.target!=null?rec.target:rec.quota):(db.settings.target!=null?db.settings.target:db.settings.quota);} // reward/penalty target
   function totalDue(){return Object.values(db.records).reduce((a,r)=>a+dueOf(r),0);}
-  function ensureRec(date){if(!db.records[date])db.records[date]={count:0,quota:db.settings.quota,price:db.settings.price};return db.records[date];}
+  function ensureRec(date){if(!db.records[date])db.records[date]={count:0,quota:db.settings.quota,price:db.settings.price,target:db.settings.target};return db.records[date];}
 
   // once per day, pre-fill today at the budget so the user just adjusts up/down
   function ensureTodaySeed(){
     const t=todayStr();
     if(db.seeded!==t){
       let changed=false;
-      if(!db.records[t]){db.records[t]={count:0,quota:db.settings.quota,price:db.settings.price,m:Date.now()};changed=true;} // today starts at 0 (placeholder) — so an unlogged day reads 0, not a fake budget-hit 10
+      if(!db.records[t]){db.records[t]={count:0,quota:db.settings.quota,price:db.settings.price,target:db.settings.target,m:Date.now()};changed=true;} // today starts at 0 (placeholder) — so an unlogged day reads 0, not a fake budget-hit 10
       db.seeded=t; save();
       return changed;
     }
@@ -505,7 +512,7 @@
     while(d>=start){
       const r=db.records[ymd(d)];
       if(!r)break;
-      if((r.count<=r.quota)===within)streak++;else break;
+      if((r.count<=tgtOf(r))===within)streak++;else break;
       d.setDate(d.getDate()-1);
     }
     return streak;
@@ -543,7 +550,7 @@
     logDate=defaultLogDate();
     const rec=db.records[logDate];
     const count=rec?rec.count:0;
-    const quota=db.settings.quota;
+    const quota=tgtOf(rec); // Log card reflects the reward/penalty target (behavior), not the money budget
     const over=Math.max(0,count-quota);
     const dd=parseYmd(logDate);
     document.getElementById('logDateLabel').textContent=`${relLabel(logDate)} · ${MON[dd.getMonth()]} ${dd.getDate()}`;
@@ -637,6 +644,7 @@
         wrap.appendChild(row);
       });
     }
+    document.getElementById('setTarget').value=(db.settings.target!=null?db.settings.target:db.settings.quota);
     document.getElementById('setQuota').value=db.settings.quota;
     document.getElementById('setPrice').value=db.settings.price;
     document.getElementById('setStart').value=db.settings.start;
@@ -662,7 +670,7 @@
     const has=data.some(d=>d.count!=null);
     document.getElementById('cigEmpty').style.display=has?'none':'block';cv.style.display=has?'block':'none';
     if(!has)return;
-    const {ctx,w,h}=setupCanvas(cv,180);const padL=26,padR=8,padT=14,padB=22;const quota=db.settings.quota;
+    const {ctx,w,h}=setupCanvas(cv,180);const padL=26,padR=8,padT=14,padB=22;const quota=(db.settings.target!=null?db.settings.target:db.settings.quota); // chart target line = reward/penalty target
     // Y-axis tiers land on meaningful reward thresholds: 0, budget(quota), then +5 steps up to cover the data
     const dataMax=Math.max(0,...data.filter(d=>d.count!=null).map(d=>d.count));
     const tiers=[0];if(quota>0)tiers.push(quota);
@@ -750,7 +758,7 @@
     if(!db.records[date] && date<db.settings.start){toast('Before the start date');return;}
     let v=parseInt(document.getElementById('sheetCount').value,10);if(isNaN(v)||v<0)v=0;
     if(db.records[date])db.records[date].count=v;
-    else db.records[date]={count:v,quota:db.settings.quota,price:db.settings.price};
+    else db.records[date]={count:v,quota:db.settings.quota,price:db.settings.price,target:db.settings.target};
     db.records[date].m=Date.now();
     save();closeSheet();renderAll();maybeCelebrate();
     toast('Saved '+fmtShort(date));
@@ -783,7 +791,8 @@
   document.getElementById('btnPlus5').onclick=()=>{addLog(5);maybeCelebrate();};
 
   // ---------- settings ----------
-  document.getElementById('setQuota').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.quota=v;db.settings._m=Date.now();save();renderAll();toast('Budget set to '+v);});
+  document.getElementById('setTarget').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.target=v;db.settings._m=Date.now();save();renderAll();toast('Reward/penalty target set to '+v);});
+  document.getElementById('setQuota').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.quota=v;db.settings._m=Date.now();save();renderAll();toast('Free budget set to '+v);});
   document.getElementById('setPrice').addEventListener('change',e=>{let v=parseInt(e.target.value,10);if(isNaN(v)||v<0)v=0;db.settings.price=v;db.settings._m=Date.now();save();renderAll();toast('Price set to '+CUR+v);});
   document.getElementById('setStart').addEventListener('change',e=>{if(e.target.value){db.settings.start=e.target.value;db.settings._m=Date.now();save();renderAll();toast('Start date updated');}});
   document.getElementById('btnReset').onclick=()=>{if(confirm('Clear all records and the tab? This cannot be undone.')){db={settings:{quota:10,price:10,start:'2026-08-05'},records:{},lastCeleb:0,seeded:null};save();ensureTodaySeed();renderAll();toast('Cleared');}};
