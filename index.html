@@ -140,6 +140,9 @@
   .row .amt.zero{color:var(--good);}
   .row .amt.due{color:var(--over);}
   .row .edit{color:var(--faint);font-size:15px;padding-left:2px;}
+  .row.notlogged{opacity:.7;}
+  .row.notlogged .date{color:var(--faint);}
+  .row.notlogged .nolog{font-size:12.5px;color:var(--faint);font-style:italic;}
   .mini-bar{height:3px;background:var(--sunk);border-radius:2px;margin-top:7px;overflow:hidden;}
   .mini-bar i{display:block;height:100%;border-radius:2px;}
 
@@ -374,7 +377,7 @@
   const DOWF=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const CUR='$';
-  const BUILD='2026-09-30a';
+  const BUILD='2026-10-20a';
   // Auto-update: on launch/foreground, fetch this page fresh and compare BUILD; if a newer build is
   // live, reload once to it. Fixes the "home-screen app stuck on a cached old version" problem for good.
   function checkUpdate(){
@@ -583,21 +586,31 @@
   }
   function renderLogRows(){
     const wrap=document.getElementById('logRows');
-    const dates=Object.keys(db.records).filter(d=>d<todayStr()).sort().reverse(); // exclude today — it's not over yet; latest shown is yesterday
-    if(!dates.length){wrap.innerHTML='<div class="empty-hint">No records yet — log a day above.</div>';return;}
-    const maxCount=Math.max(...dates.map(d=>db.records[d].count),db.settings.quota,1);
-    wrap.innerHTML='';
-    dates.forEach(d=>{
-      const r=db.records[d];const over=r.count>r.quota;const dd=parseYmd(d);
-      const row=document.createElement('div');row.className='row'+(d===logDate?' sel':'');
-      const pct=Math.min(100,r.count/maxCount*100);
-      row.innerHTML=`<div class="date">${dd.getMonth()+1}/${dd.getDate()}<span class="dow">${DOW[dd.getDay()]}</span></div>
-        <div class="bar-wrap"><div class="cnt"><b>${r.count}</b><span>cig${r.count===1?'':'s'} ${over?'· '+(r.count-r.quota)+' over':''}</span></div>
-        <div class="mini-bar"><i style="width:${pct}%;background:${over?'var(--over)':'var(--good)'}"></i></div></div>
-        <div class="edit">&#9998;</div>`;
-      row.addEventListener('click',()=>openSheet(d));
-      wrap.appendChild(row);
-    });
+    const end=new Date();end.setHours(0,0,0,0);end.setDate(end.getDate()-1); // yesterday (today excluded — not over yet)
+    let start=parseYmd(db.settings.start);
+    const keys=Object.keys(db.records);
+    if(keys.length){const e=parseYmd(keys.slice().sort()[0]); if(e<start)start=e;} // never hide a logged day earlier than start
+    if(end<start){wrap.innerHTML='<div class="empty-hint">No records yet — log a day above.</div>';return;}
+    const maxCount=Math.max(...keys.map(d=>db.records[d].count),db.settings.quota,1);
+    const rows=[];
+    for(let d=new Date(end);d>=start;d.setDate(d.getDate()-1)){
+      const key=ymd(d);const r=db.records[key];
+      const dateCell=`<div class="date">${d.getMonth()+1}/${d.getDate()}<span class="dow">${DOW[d.getDay()]}</span></div>`;
+      if(r){
+        const tgt=tgtOf(r);const over=r.count>tgt;const pct=Math.min(100,r.count/maxCount*100);
+        rows.push(`<div class="row${key===logDate?' sel':''}" data-d="${key}">${dateCell}
+          <div class="bar-wrap"><div class="cnt"><b>${r.count}</b><span>cig${r.count===1?'':'s'} ${over?'· '+(r.count-tgt)+' over':''}</span></div>
+          <div class="mini-bar"><i style="width:${pct}%;background:${over?'var(--over)':'var(--good)'}"></i></div></div>
+          <div class="edit">&#9998;</div></div>`);
+      }else{
+        // unlogged day — still shown, so no day ever "disappears"; tap to fill it
+        rows.push(`<div class="row notlogged" data-d="${key}">${dateCell}
+          <div class="bar-wrap"><div class="cnt"><span class="nolog">not logged · tap to add</span></div></div>
+          <div class="edit">&#9998;</div></div>`);
+      }
+    }
+    wrap.innerHTML=rows.join('');
+    wrap.querySelectorAll('.row').forEach(row=>row.addEventListener('click',()=>openSheet(row.dataset.d)));
   }
   function renderCatchup(){
     const miss=missingDays().filter(d=>d!==logDate);
